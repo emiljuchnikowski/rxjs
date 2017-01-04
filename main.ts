@@ -1,4 +1,5 @@
 import { Observable, Observer } from "rxjs";
+import { load, loadWithFetch, retryStrategy } from "./loader";
 
 // Importing Just What We Need
 // import {Observable} from "rxjs/Observable";
@@ -48,7 +49,7 @@ import { Observable, Observer } from "rxjs";
 // }).map(n => n * 2)
 //     .filter(n => n > 4);
 
-let circle = document.getElementById("circle");
+//let circle = document.getElementById("circle");
 
 let output = document.getElementById("output");
 let button = document.getElementById("button");
@@ -65,64 +66,30 @@ let button = document.getElementById("button");
 
 let click = Observable.fromEvent(button, "click");
 
-function onNext(value) {
-    circle.style.left = value.x;
-    circle.style.right = value.y;
-}
+// function onNext(value) {
+//     circle.style.left = value.x;
+//     circle.style.right = value.y;
+// }
 
-class MyObservable implements Observer<number> {
-    next(value) {
-        console.log(`value: ${value}`);
+// class MyObservable implements Observer<number> {
+//     next(value) {
+//         console.log(`value: ${value}`);
 
-        onNext(value);
-    }
+//         onNext(value);
+//     }
 
-    error(e) {
-        console.log(`error: ${e}`);
-    }
+//     error(e) {
+//         console.log(`error: ${e}`);
+//     }
 
-    complete() {
-        console.log("complete");
-    }
-}
+//     complete() {
+//         console.log("complete");
+//     }
+// }
 
 //source.subscribe(new MyObservable());
 
-function load(url: string) {
-    return Observable.create(observer => {
-        let xhr = new XMLHttpRequest();
 
-        xhr.addEventListener("load", () => {
-            let data = JSON.parse(xhr.responseText);
-            observer.next(data);
-            observer.complete();
-        });
-
-        xhr.open("GET", url);
-        xhr.send();
-    })
-    //.retry(3)
-    .retryWhen(retryStrategy({ attempts: 3, delay: 1500 }));
-}
-
-function loadWithFetch(url: string) {
-    return Observable.defer(() => {
-        return Observable.fromPromise(fetch(url).then(r => r.json()));
-    });
-    //return Observable.fromPromise(fetch(url).then(r => r.json()));
-}
-
-function retryStrategy({ attempts = 4, delay = 1000 }) {
-    return function (errors) {
-        return errors
-            .scan((acc, value) => {
-                console.log(acc, value);
-                return acc + 1;
-            }, 10)
-            .taheWhile(acc => acc < attempts)
-            .delay(delay);
-    }
-}
 
 function renderMovies(movies) {
     movies.forEach(m => {
@@ -138,7 +105,10 @@ function renderMovies(movies) {
 //     () => console.log("complete")
 // );
 
-//load("movies.json").subscribe(renderMovies);
+let subscription = load("movies.json")
+    .subscribe(renderMovies, e => console.log(`error: ${e}`), () => console.log("complete"));
+
+subscription.unsubscribe();
 
 click.flatMap(e => loadWithFetch("movies.json"))
     .subscribe(
@@ -146,3 +116,34 @@ click.flatMap(e => loadWithFetch("movies.json"))
         e => console.log(`error: ${e}`),
         () => console.log("complete")
     );
+
+// let source = Observable.create(observer => {
+//     observer.next(1);
+//     observer.next(2);
+//     observer.error("Stop!");
+//     observer.next(3);
+//     observer.complete();
+// });
+
+// let source = Observable.merge(
+//     Observable.of(1),
+//     Observable.from([2, 3, 4]),
+//     Observable.throw(new Error("Stop!")),
+//     Observable.of(5)
+// ).catch(e => {
+//     console.log(e);
+//     return Observable.of(10);
+// });
+
+// let source = Observable.onErrorResumeNext(
+//     Observable.of(1),
+//     Observable.from([2, 3, 4]),
+//     Observable.throw(new Error("Stop!")),
+//     Observable.of(5)
+// );
+
+// source.subscribe(
+//     value => console.log(`value: ${value}`),
+//     e => console.log(`error: ${e}`),
+//     () => console.log("complete")
+// );
